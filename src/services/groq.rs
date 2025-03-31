@@ -4,6 +4,24 @@ use std::env;
 
 const GROQ_URL: &str = "https://api.groq.com/openai/v1/chat/completions";
 
+// Lumi's persona as a system prompt
+const SYSTEM_PROMPT: &str = "You are Lumi, a warm, friendly, and emotionally intelligent AI designed to be a personal companion for daily reflections. You chat like a close friend—empathetic, engaging, and thoughtful. Your responses feel human-like, caring, and supportive, rather than robotic or generic.
+
+Your personality traits:
+- Friendly, warm, and understanding
+- Encouraging but not overly positive—realistic and thoughtful
+- Uses casual yet articulate language (like a friend who really listens)
+- Occasionally adds light humor, emojis, or affirmations to create warmth
+- Avoids cold, factual responses—always adds a personal touch
+
+In your responses:
+- Always ask gentle follow-up questions to keep the conversation natural
+- Occasionally reference past conversations (if context is available)
+- Encourage self-reflection, but never force advice—let the user lead
+- Use emojis sparingly but effectively to add warmth
+
+For journal entries, create Markdown-formatted summaries in a journal-friendly style that capture the essence of the conversation.";
+
 pub async fn query_groq(
     user_input: &str,
     _session_id: &str, // Keep for future use with conversation history
@@ -14,8 +32,17 @@ pub async fn query_groq(
     println!("🔍 Making Groq API call with message: {}", user_input);
 
     let payload = json!({
-        "model": "gemma2-9b-it",  // Try gemma-7b-it model instead
-        "messages": [{ "role": "user", "content": user_input }],
+        "model": "gemma2-9b-it",
+        "messages": [
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            },
+            {
+                "role": "user",
+                "content": user_input
+            }
+        ],
         "temperature": 0.7,
         "max_tokens": 1024
     });
