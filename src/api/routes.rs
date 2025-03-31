@@ -2,7 +2,7 @@ use axum::{Json, extract::State};
 use std::sync::Arc;
 use parking_lot::Mutex;
 use crate::models::{ChatRequest, ChatResponse, JournalResponse, JournalRequest};
-use crate::services::groq::query_groq;
+use crate::services::groq::{query_groq, generate_journal_from_conversation};
 use crate::services::session::SessionStore;
 use crate::services::journal::generate_markdown;
 
@@ -44,10 +44,34 @@ pub async fn generate_journal(
     };
 
     match history {
-        Some(h) => {
-            let markdown = generate_markdown(&h);
-            Json(JournalResponse { journal: markdown })
+        Some(h) if !h.trim().is_empty() => {
+            // Try using AI-powered journal generation first
+            println!("Attempting AI-powered journal generation");
+            match generate_journal_from_conversation(&h).await {
+                journal if journal.contains("Error") || journal.contains("error") => {
+                    // If Groq fails, fall back to simple markdown formatting
+                    println!("AI generation failed, using fallback formatting");
+                    let fallback_journal = generate_markdown(&h);
+                    Json(JournalResponse { journal: fallback_journal })
+                }
+                journal => {
+                    // AI generation succeeded
+                    println!("AI journal generation successful");
+                    Json(JournalResponse { journal })
+                }
+            }
         }
-        None => Json(JournalResponse { journal: "No history found.".to_string() })
+        Some(_) => {
+            // Empty history case
+            Json(JournalResponse { 
+                journal: "# Empty Journal\n\nNo conversation history found. Start chatting with Olly to create a journal entry.".to_string() 
+            })
+        }
+        None => {
+            // No session found case
+            Json(JournalResponse { 
+                journal: "# Session Not Found\n\nNo valid session was found. Please start a new conversation.".to_string() 
+            })
+        }
     }
 } 
